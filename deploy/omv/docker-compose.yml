@@ -21,8 +21,8 @@ services:
       - MB_SEED_SERVE_PORT=${MB_SEED_SERVE_PORT:-8787}
     volumes:
       - ./lidarr-musicbrainz/output:/output
-      # YAML perso (optionnel) :
-      # - ./lidarr-musicbrainz/config:/config:ro
+      - ./lidarr-musicbrainz/config:/config:ro
+      - ./lidarr-musicbrainz/examples:/app/examples:ro
     ports:
       - "${MB_SEED_PORT:-8787}:8787"
     logging:

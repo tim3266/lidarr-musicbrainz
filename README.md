@@ -48,6 +48,32 @@ Tu devras quand même **valider** l’edit dans l’éditeur si MusicBrainz ne r
 
 Voir `examples/justin-bieber-journals-expanded.yaml`.
 
+## Serveur à la demande (v0.2)
+
+Le conteneur tourne en **mode serveur** : il ne regénère plus le HTML qu’au démarrage, mais quand tu le demandes.
+
+| Méthode | URL | Rôle |
+|---------|-----|------|
+| GET | `/health` | Santé |
+| GET | `/v1/album/{release-group-mbid}/status` | Releases MB (+ Lidarr si `LIDARR_API_KEY`) |
+| POST | `/v1/album/seed` | Génère `mb-seed.html` pour un YAML ou un JSON |
+
+Exemples :
+
+```bash
+# État Journals (MusicBrainz vs cache Servarr via Lidarr)
+curl -s http://192.168.1.27:8787/v1/album/37b21c23-b70c-40c1-8c24-191ff84242c1/status
+
+# Seed à la demande (YAML dans /config)
+curl -s -X POST http://192.168.1.27:8787/v1/album/seed \
+  -H 'Content-Type: application/json' \
+  -d '{"config": "justin-bieber-journals-expanded.yaml"}'
+```
+
+Réponse : `html_url` à ouvrir dans le navigateur (connecté à MusicBrainz).
+
+Variables : `LIDARR_MB_API_KEY` (protège POST), `LIDARR_URL`, `LIDARR_API_KEY`, `MB_RUN_MODE=once` pour l’ancien comportement au boot.
+
 ## Docker / OMV (`/appdata/mediarr`)
 
 Comme **bazarr-translate** : clone sous `/appdata/mediarr/lidarr-musicbrainz`, mots de passe dans **`mediarr.env`**, service dans **`compose.override.yml`**.

@@ -6,58 +6,8 @@ import argparse
 import sys
 from pathlib import Path
 
-import yaml
-
-from lidarr_musicbrainz.html_seed import write_seed_html
-from lidarr_musicbrainz.mb_api import get_release
-from lidarr_musicbrainz.seed import BonusTrack, ReleaseSeed, build_seed_fields, tracks_from_release
-from lidarr_musicbrainz.session_submit import (
-    MusicBrainzAuthError,
-    credentials_from_env,
-    login_session,
-    post_seed,
-)
-
-DEFAULT_ACTION = "https://musicbrainz.org/release/add"
-
-
-def load_yaml_config(path: Path) -> ReleaseSeed:
-    raw = yaml.safe_load(path.read_text(encoding="utf-8"))
-    bonus = [
-        BonusTrack(
-            position=int(item["position"]),
-            title=str(item["title"]),
-            recording_mbid=item.get("recording_mbid"),
-            length_ms=item.get("length_ms"),
-            number=item.get("number"),
-        )
-        for item in raw.get("bonus_tracks") or []
-    ]
-    return ReleaseSeed(
-        name=raw["name"],
-        release_group_mbid=raw["release_group_mbid"],
-        artist_mbid=raw["artist_mbid"],
-        artist_name=raw.get("artist_name", "Justin Bieber"),
-        disambiguation=raw.get("disambiguation", ""),
-        status=raw.get("status", "official"),
-        packaging=raw.get("packaging", ""),
-        barcode=raw.get("barcode", ""),
-        language=raw.get("language", "eng"),
-        script=raw.get("script", "Latn"),
-        medium_format=raw.get("medium_format", "CD"),
-        secondary_type=raw.get("secondary_type", "Compilation"),
-        event_country=raw.get("event_country", "US"),
-        event_year=raw.get("event_year"),
-        event_month=raw.get("event_month"),
-        event_day=raw.get("event_day"),
-        label_mbid=raw.get("label_mbid", ""),
-        catalog_number=raw.get("catalog_number", ""),
-        edit_note=raw.get("edit_note", ""),
-        discogs_url=raw.get("discogs_url", ""),
-        source_release_mbid=raw.get("source_release_mbid", ""),
-        bonus_tracks=bonus,
-        skip_source_tracks_after=raw.get("skip_source_tracks_after"),
-    )
+from lidarr_musicbrainz.config_loader import load_yaml_config
+from lidarr_musicbrainz.job import run_seed_job
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -90,39 +40,34 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] == "serve":
+        from lidarr_musicbrainz.server import main as serve_main
+
+        serve_main()
+        return 0
+
     parser = build_parser()
     args = parser.parse_args(argv)
 
     if not args.config:
-        parser.error("--config is required")
+        parser.error("--config is required (or run: mb-seed-release serve)")
 
     seed = load_yaml_config(args.config)
-    if not seed.source_release_mbid:
-        print("source_release_mbid is required in config", file=sys.stderr)
-        return 2
+    result = run_seed_job(seed, args.html.parent, submit=args.submit)
+    Path(args.html).write_bytes(Path(result.html_path).read_bytes())
 
-    release = get_release(seed.source_release_mbid)
-    source_tracks = tracks_from_release(release)
-    fields = build_seed_fields(seed, source_tracks)
-
-    write_seed_html(args.html, fields, DEFAULT_ACTION)
     print(f"HTML seed written: {args.html.resolve()}")
     print("1. Connecte-toi sur https://musicbrainz.org")
     print(f"2. Ouvre {args.html.resolve()} dans le navigateur et envoie le formulaire")
     print("3. Vérifie la tracklist, soumets l'edit, puis refresh l'artiste dans Lidarr")
 
     if args.submit:
-        try:
-            user, password = credentials_from_env()
-            session = login_session(user, password)
-            response = post_seed(session, fields)
-        except MusicBrainzAuthError as exc:
-            print(f"Erreur: {exc}", file=sys.stderr)
+        if result.error:
+            print(f"Erreur submit: {result.error}", file=sys.stderr)
             return 1
-        if args.print_url:
-            print(response.url)
-        else:
-            print("Seed POST OK — termine la release dans l'éditeur si tu n'es pas redirigé.")
+        if args.print_url and result.submit_url:
+            print(result.submit_url)
 
     return 0
 

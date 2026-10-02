@@ -34,6 +34,29 @@ def get_release(release_mbid: str) -> dict[str, Any]:
     return payload["release"]
 
 
+def get_release_group_releases(release_group_mbid: str) -> list[dict[str, Any]]:
+    configure_client()
+    time.sleep(1.05)
+    payload = mb.get_release_group_by_id(
+        release_group_mbid,
+        includes=["releases"],
+    )
+    group = payload.get("release-group") or payload
+    return list(group.get("release-list") or group.get("releases") or [])
+
+
+def get_release_track_count(release_mbid: str) -> int | None:
+    configure_client()
+    time.sleep(1.05)
+    payload = mb.get_release_by_id(release_mbid, includes=["recordings"])
+    release = payload.get("release") or payload
+    total = 0
+    for medium in release.get("medium-list") or release.get("media") or []:
+        tracks = medium.get("track-list") or medium.get("tracks") or []
+        total += len(tracks)
+    return total if total else None
+
+
 def recording_mbid(track: dict[str, Any]) -> str | None:
     rec = track.get("recording")
     if not rec:

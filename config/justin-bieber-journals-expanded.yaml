@@ -1,0 +1,42 @@
+# Justin Bieber — Journals (Expanded Edition, CD 2023, 17 tracks)
+# Source release: 15-track CD already on MusicBrainz (reuse recordings 1–15).
+
+name: Journals
+disambiguation: Expanded edition
+release_group_mbid: 37b21c23-b70c-40c1-8c24-191ff84242c1
+artist_mbid: e0140a67-e4d1-4f13-8a01-364355bee46e
+artist_name: Justin Bieber
+
+source_release_mbid: b6fece73-2f87-4881-b816-e377be6756d1
+
+status: official
+medium_format: CD
+secondary_type: Compilation
+language: eng
+script: Latn
+packaging: Jewel Case
+
+barcode: "0602455885425"
+event_country: US
+event_year: 2023
+event_month: 10
+event_day: 27
+
+label_mbid: a92d1684-4edb-48aa-b913-30e9da213004
+catalog_number: "602455885425"
+
+discogs_url: https://www.discogs.com/release/36035926-Justin-Bieber-Journals-Expanded-Edition
+
+edit_note: |
+  Added 2023 Expanded Edition CD (17 tracks). Track order and barcode from Discogs 36035926.
+  Tracks 1–15 reused from existing Journals CD; bonus Flatline + Alone per physical tracklist.
+
+bonus_tracks:
+  - position: 16
+    title: Flatline
+    recording_mbid: 12fd593a-f2b4-4a05-8ac5-ec7361bb4017
+    length_ms: 219549
+  - position: 17
+    title: Alone
+    # Pas encore sur MusicBrainz pour cet album — laisser vide pour créer l'enregistrement dans l'éditeur
+    length_ms: 142000
