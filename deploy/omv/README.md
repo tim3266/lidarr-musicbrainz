@@ -54,6 +54,7 @@ Le service utilise `pull_policy: never` pour éviter ce pull automatique.
 ## 4. Utilisation
 
 - UI web : `http://<omv>:8787/app.html` (alias `/` et `/plugin-demo/app.html`).
+- **Import bloqué en queue** : `LIDARR_API_KEY` + `LIDARR_URL` accessibles **depuis le conteneur** (souvent `http://lidarr:8686`, pas `127.0.0.1`). Monter le dossier de téléchargement en `:ro` et l’ajouter à `MB_ALLOWED_SCAN_PATHS`.
 - Vérifier après **build** : `curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8787/app.html` → **200** (ou `curl -sI …` une fois l’image à jour).
 - Ouvre `http://<omv>:8787/mb-seed.html` (après génération au démarrage du conteneur).
 - Connecte-toi sur MusicBrainz, envoie le formulaire, valide l’edit.

@@ -14,6 +14,7 @@ from urllib.parse import parse_qs, urlparse
 from lidarr_musicbrainz.config_loader import load_yaml_config, seed_from_dict
 from lidarr_musicbrainz.job import run_seed_job
 from lidarr_musicbrainz.status import album_status
+from lidarr_musicbrainz.reconcile import reconcile_album
 from lidarr_musicbrainz.suggest import suggest_album
 
 UUID_RE = re.compile(
@@ -166,9 +167,7 @@ class AlbumHandler(BaseHTTPRequestHandler):
             return
 
         parsed = urlparse(self.path)
-        if parsed.path.rstrip("/") != "/v1/album/seed":
-            _json_response(self, 404, {"error": "Not found"})
-            return
+        path = parsed.path.rstrip("/")
 
         length = int(self.headers.get("Content-Length", 0))
         raw = self.rfile.read(length) if length else b"{}"
@@ -176,6 +175,23 @@ class AlbumHandler(BaseHTTPRequestHandler):
             body = json.loads(raw.decode("utf-8") or "{}")
         except json.JSONDecodeError:
             _json_response(self, 400, {"error": "Invalid JSON body"})
+            return
+
+        match = re.match(r"^/v1/album/([0-9a-f-]{36})/reconcile$", path, re.I)
+        if match:
+            try:
+                payload = reconcile_album(
+                    match.group(1),
+                    scan_path=body.get("scan_path") or body.get("path"),
+                    use_queue=bool(body.get("use_queue")),
+                )
+                _json_response(self, 200, payload)
+            except Exception as exc:  # noqa: BLE001
+                _json_response(self, 500, {"error": str(exc)})
+            return
+
+        if path != "/v1/album/seed":
+            _json_response(self, 404, {"error": "Not found"})
             return
 
         try:
@@ -227,6 +243,23 @@ class AlbumHandler(BaseHTTPRequestHandler):
             if not proposed:
                 raise ValueError(suggestion.get("message") or "No seed proposal for this album")
             return seed_from_dict(proposed)
+
+        if body.get("from_reconcile") is True:
+            rg = body.get("release_group_mbid")
+            if not rg or not UUID_RE.match(str(rg)):
+                raise ValueError("release_group_mbid required with from_reconcile")
+            report = reconcile_album(
+                str(rg),
+                scan_path=body.get("scan_path") or body.get("path"),
+                use_queue=bool(body.get("use_queue")),
+            )
+            proposed = report.get("proposed_seed_yaml")
+            if not proposed:
+                raise ValueError(report.get("message") or report.get("error") or "No seed from reconcile")
+            return seed_from_dict(proposed)
+
+        if isinstance(body.get("proposed_seed_yaml"), dict):
+            return seed_from_dict(body["proposed_seed_yaml"])
 
         raise ValueError(
             "Provide 'config', a full seed object, or {'from_suggest': true, 'release_group_mbid': '...'}"

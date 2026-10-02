@@ -49,7 +49,8 @@ L’image n’est **pas** sur Docker Hub : toujours `docker compose build` avant
 | `MUSICBRAINZ_PASSWORD` | Non | Mot de passe MB — **ne jamais commiter** |
 | `MUSICBRAINZ_APP_CONTACT` | Recommandé | Contact User-Agent MB (`mailto:…` ou URL GitHub) |
 | `LIDARR_URL` | Non | URL Lidarr, ex. `http://127.0.0.1:8686` |
-| `LIDARR_API_KEY` | Non | Clé Lidarr (Settings → General) — pour `/status` et `/suggest` |
+| `LIDARR_API_KEY` | Non | Clé Lidarr (Settings → General) — pour `/status`, `/suggest`, queue `/reconcile` |
+| `MB_ALLOWED_SCAN_PATHS` | Non | Racines autorisées pour lire les fichiers (défaut `/downloads,/music,…`) |
 | `LIDARR_MB_API_KEY` | Recommandé | **Clé que tu inventes** pour protéger **cet outil** (header `X-Api-Key`). Ce n’est **pas** la clé Lidarr. |
 | `MB_SEED_SERVE_PORT` | Non | Port HTTP (défaut `8787`) |
 | `MB_RUN_MODE` | Non | `server` (défaut) ou `once` (génère le HTML au boot puis quitte) |
@@ -76,6 +77,7 @@ Port par défaut : **8787**.
 | GET | `/health` | Santé |
 | GET | `/v1/album/{release-group-mbid}/status` | Liste des releases MB + comparaison Lidarr |
 | GET | `/v1/album/{release-group-mbid}/suggest` | Analyse : que faire ? YAML proposé si seed MB utile |
+| POST | `/v1/album/{release-group-mbid}/reconcile` | Compare **fichiers** (dossier ou queue Lidarr) vs MusicBrainz ; propose un seed |
 | POST | `/v1/album/seed` | Génère `mb-seed.html` |
 | GET | `/mb-seed.html` | Dernière génération |
 | GET | `/output/{job_id}/mb-seed.html` | Génération d’un job précis |

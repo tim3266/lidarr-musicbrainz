@@ -77,10 +77,19 @@
       <input type="password" id="apiKey" autocomplete="off" placeholder="Enregistrée dans ce navigateur uniquement" />
       <label for="rg">Release group MBID (album Lidarr)</label>
       <input type="text" id="rg" placeholder="37b21c23-b70c-40c1-8c24-191ff84242c1" spellcheck="false" />
+      <label for="release">Release MBID (édition Lidarr surveillée — info)</label>
+      <input type="text" id="release" placeholder="Optionnel — depuis le userscript sur la fiche album" spellcheck="false" />
+      <label for="scanPath">Dossier des fichiers (optionnel — sinon queue Lidarr)</label>
+      <input type="text" id="scanPath" placeholder="/downloads/…/Album" spellcheck="false" />
       <div class="row">
         <button type="button" class="primary" id="btnSuggest">Analyser (suggest)</button>
         <button type="button" id="btnStatus">Status détaillé</button>
-        <a class="btn" id="linkSeed" href="/mb-seed.html" target="_blank" rel="noopener">Dernier seed HTML</a>
+        <button type="button" id="btnReconcile">Fichiers ↔ MB (queue)</button>
+        <button type="button" id="btnReconcilePath">Fichiers ↔ MB (dossier)</button>
+      </div>
+      <div class="row">
+        <button type="button" class="primary" id="btnCreateRelease">Créer une release (suggest MB)</button>
+        <button type="button" class="primary" id="btnCreateFromFiles">Créer une release (fichiers)</button>
       </div>
       <p class="status" id="msg"></p>
     </div>
@@ -100,10 +109,14 @@
     const KEY = "lmb_api_key";
     const apiKeyEl = document.getElementById("apiKey");
     const rgEl = document.getElementById("rg");
+    const releaseEl = document.getElementById("release");
+    const scanPathEl = document.getElementById("scanPath");
     const outEl = document.getElementById("out");
+    let lastReconcile = null;
     const msgEl = document.getElementById("msg");
     const params = new URLSearchParams(location.search);
     if (params.get("rg")) rgEl.value = params.get("rg");
+    if (params.get("release")) releaseEl.value = params.get("release");
     apiKeyEl.value = localStorage.getItem(KEY) || "";
 
     function headers() {
@@ -144,6 +157,130 @@
       fetchJson("/v1/album/{rg}/suggest"));
     document.getElementById("btnStatus").addEventListener("click", () =>
       fetchJson("/v1/album/{rg}/status"));
+
+    async function postReconcile(useQueue) {
+      localStorage.setItem(KEY, apiKeyEl.value.trim());
+      const rg = rgEl.value.trim();
+      if (!/^[0-9a-f-]{36}$/i.test(rg)) {
+        setMsg("MBID release group requis.", "err");
+        return null;
+      }
+      const body = { release_group_mbid: rg };
+      if (useQueue) body.use_queue = true;
+      else {
+        const p = scanPathEl.value.trim();
+        if (!p) {
+          setMsg("Indique un dossier ou utilise la queue.", "err");
+          return null;
+        }
+        body.scan_path = p;
+      }
+      setMsg("Lecture des fichiers et comparaison MusicBrainz…", "");
+      outEl.value = "";
+      const res = await fetch(`/v1/album/${encodeURIComponent(rg)}/reconcile`, {
+        method: "POST",
+        headers: { ...headers(), "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+        outEl.value = JSON.stringify(data, null, 2);
+      } catch {
+        outEl.value = text;
+        return null;
+      }
+      if (!res.ok) {
+        setMsg(data?.error || "HTTP " + res.status, "err");
+        return null;
+      }
+      lastReconcile = data;
+      setMsg(data.message || "OK", data.proposed_seed_yaml ? "ok" : "");
+      return data;
+    }
+
+    document.getElementById("btnReconcile").addEventListener("click", () => {
+      postReconcile(true).catch((e) => setMsg(String(e.message || e), "err"));
+    });
+    document.getElementById("btnReconcilePath").addEventListener("click", () => {
+      postReconcile(false).catch((e) => setMsg(String(e.message || e), "err"));
+    });
+
+    document.getElementById("btnCreateRelease").addEventListener("click", async () => {
+      localStorage.setItem(KEY, apiKeyEl.value.trim());
+      const rg = rgEl.value.trim();
+      if (!/^[0-9a-f-]{36}$/i.test(rg)) {
+        setMsg("MBID release group requis.", "err");
+        return;
+      }
+      setMsg("Préparation du formulaire MusicBrainz…", "");
+      outEl.value = "";
+      try {
+        const res = await fetch("/v1/album/seed", {
+          method: "POST",
+          headers: { ...headers(), "Content-Type": "application/json" },
+          body: JSON.stringify({ from_suggest: true, release_group_mbid: rg }),
+        });
+        const text = await res.text();
+        let data;
+        try {
+          data = JSON.parse(text);
+          outEl.value = JSON.stringify(data, null, 2);
+        } catch {
+          outEl.value = text;
+        }
+        if (!res.ok) {
+          setMsg(data?.error || "HTTP " + res.status, "err");
+          return;
+        }
+        const url = data.latest_html_url || data.html_url || "/mb-seed.html";
+        setMsg("Formulaire prêt — ouvre l’onglet MusicBrainz.", "ok");
+        window.open(url, "_blank", "noopener,noreferrer");
+      } catch (e) {
+        setMsg(String(e.message || e), "err");
+      }
+    });
+
+    document.getElementById("btnCreateFromFiles").addEventListener("click", async () => {
+      localStorage.setItem(KEY, apiKeyEl.value.trim());
+      const rg = rgEl.value.trim();
+      if (!/^[0-9a-f-]{36}$/i.test(rg)) {
+        setMsg("MBID release group requis.", "err");
+        return;
+      }
+      setMsg("Seed depuis fichiers…", "");
+      try {
+        const body = {
+          from_reconcile: true,
+          release_group_mbid: rg,
+          use_queue: !scanPathEl.value.trim(),
+        };
+        if (scanPathEl.value.trim()) body.scan_path = scanPathEl.value.trim();
+        const res = await fetch("/v1/album/seed", {
+          method: "POST",
+          headers: { ...headers(), "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const text = await res.text();
+        let data;
+        try {
+          data = JSON.parse(text);
+          outEl.value = JSON.stringify(data, null, 2);
+        } catch {
+          outEl.value = text;
+        }
+        if (!res.ok) {
+          setMsg(data?.error || "HTTP " + res.status, "err");
+          return;
+        }
+        const url = data.latest_html_url || data.html_url || "/mb-seed.html";
+        setMsg("Formulaire prêt (aligné fichiers) — ouvre MusicBrainz.", "ok");
+        window.open(url, "_blank", "noopener,noreferrer");
+      } catch (e) {
+        setMsg(String(e.message || e), "err");
+      }
+    });
   </script>
 </body>
 </html>

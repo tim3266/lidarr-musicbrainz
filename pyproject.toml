@@ -1,6 +1,6 @@
 [project]
 name = "lidarr-musicbrainz"
-version = "0.2.1"
+version = "0.2.2"
 description = "Seed MusicBrainz release editor from an existing release (Lidarr-friendly bonus editions)"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -9,6 +9,7 @@ dependencies = [
   "musicbrainzngs>=0.7.1",
   "requests>=2.31.0",
   "pyyaml>=6.0",
+  "mutagen>=1.47.0",
 ]
 
 [project.scripts]

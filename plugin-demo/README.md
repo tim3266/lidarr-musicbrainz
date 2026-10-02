@@ -11,9 +11,13 @@ Comme la maquette, mais dans **ton** Lidarr :
    - `MB_APP_URL` → ton service, ex. `http://192.168.1.27:8787/app.html`
 4. Recharge Lidarr : sous **System**, une ligne **MusicBrainz Helper** apparaît ; un clic ouvre l’app dans **une nouvelle fenêtre**.
 
+Sur une **fiche album** (`/album/{release-group-mbid}`), un **bandeau** affiche le **release group** et la **release** (édition surveillée) en entier, avec boutons **Copier**. Lidarr natif met ses liens dans le tooltip **Links**.
+
+Vérifie que Tampermonkey est actif sur **exactement** l’URL du navigateur. **`LIDARR_API_KEY`** dans le script (Settings → General) est nécessaire pour remplir la release ; le release group vient toujours de l’URL.
+
 Sur **System → Plugins**, un encart rappelle le même bouton (comme la démo « plugin installé »).
 
-Page servie par Docker : `http://<host>:8787/app.html` (analyse MBID, lien vers le dernier seed).
+Page servie par Docker : `http://<host>:8787/app.html` (analyse MBID, bouton **Créer une release**).
 
 ---
 

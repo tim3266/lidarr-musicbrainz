@@ -22,6 +22,8 @@ services:
       - ./lidarr-musicbrainz/output:/output
       - ./lidarr-musicbrainz/config:/config:ro
       - ./lidarr-musicbrainz/examples:/app/examples:ro
+      # Exemple : accès aux téléchargements Lidarr pour /v1/album/…/reconcile
+      # - /chemin/host/telechargements:/downloads:ro
     ports:
       - "${MB_SEED_PORT:-8787}:8787"
     logging:
