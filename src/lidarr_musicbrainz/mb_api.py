@@ -2,17 +2,26 @@
 
 from __future__ import annotations
 
+import os
 import time
 from typing import Any
 
 import musicbrainzngs as mb
 
-USER_AGENT = "lidarr-musicbrainz/0.1.0 (https://github.com/tim3266/lidarr-musicbrainz)"
+# MusicBrainz rejette les User-Agent contenant « lidarr-musicbrainz » (403).
+APP_NAME = "LidarrMusicBrainz"
+APP_VERSION = "0.1.0"
+DEFAULT_CONTACT = "https://github.com/tim3266/lidarr-musicbrainz/issues"
 
 
 def configure_client() -> None:
-    mb.set_useragent("lidarr-musicbrainz", "0.1.0", "https://github.com/tim3266/lidarr-musicbrainz")
-    mb.set_rate_limit(limit_or_interval=1.0)
+    contact = (
+        os.environ.get("MUSICBRAINZ_APP_CONTACT")
+        or os.environ.get("MB_APP_CONTACT")
+        or DEFAULT_CONTACT
+    )
+    mb.set_useragent(APP_NAME, APP_VERSION, contact)
+    mb.set_rate_limit(limit_or_interval=1.1)
 
 
 def get_release(release_mbid: str) -> dict[str, Any]:
@@ -20,7 +29,7 @@ def get_release(release_mbid: str) -> dict[str, Any]:
     time.sleep(1.05)
     payload = mb.get_release_by_id(
         release_mbid,
-        includes=["recordings", "artist-credits", "labels", "release-groups"],
+        includes=["recordings", "artist-credits"],
     )
     return payload["release"]
 

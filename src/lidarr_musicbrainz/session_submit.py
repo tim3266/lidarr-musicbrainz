@@ -10,7 +10,7 @@ import requests
 
 MB_LOGIN = "https://musicbrainz.org/login"
 MB_RELEASE_ADD = "https://musicbrainz.org/release/add"
-USER_AGENT = "lidarr-musicbrainz/0.1.0 (https://github.com/tim3266/lidarr-musicbrainz)"
+USER_AGENT = "LidarrMusicBrainz/0.1.0 (https://github.com/tim3266/lidarr-musicbrainz)"
 
 
 class MusicBrainzAuthError(RuntimeError):
