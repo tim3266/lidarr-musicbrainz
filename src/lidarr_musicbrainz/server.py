@@ -58,6 +58,24 @@ class AlbumHandler(BaseHTTPRequestHandler):
             _json_response(self, 200, {"ok": True})
             return
 
+        if path == "/v1/configs":
+            if not _check_api_key(self):
+                _unauthorized(self)
+                return
+            configs = sorted(
+                p.name for p in self.config_dir.glob("*.yaml") if p.is_file()
+            )
+            _json_response(
+                self,
+                200,
+                {
+                    "config_dir": str(self.config_dir),
+                    "yaml_files": configs,
+                    "hint": "POST /v1/album/seed with {\"config\": \"fichier.yaml\"}",
+                },
+            )
+            return
+
         if path == "/mb-seed.html":
             self._serve_file(self.output_dir / "mb-seed.html")
             return

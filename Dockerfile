@@ -10,8 +10,9 @@ COPY deploy/omv/entrypoint.sh /entrypoint.sh
 RUN pip install --no-cache-dir . \
     && chmod +x /entrypoint.sh
 
-ENV MB_SEED_HTML=/output/mb-seed.html
-ENV MB_SEED_CONFIG=/app/examples/justin-bieber-journals-expanded.yaml
+ENV MB_OUTPUT_DIR=/output
+ENV MB_CONFIG_DIR=/config
+ENV MB_RUN_MODE=server
 
 VOLUME ["/output"]
 

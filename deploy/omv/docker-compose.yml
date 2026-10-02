@@ -15,8 +15,7 @@ services:
       - mediarr.env
     environment:
       - TZ=Europe/Paris
-      - MB_SEED_CONFIG=${MB_SEED_CONFIG:-/app/examples/justin-bieber-journals-expanded.yaml}
-      - MB_SEED_HTML=/output/mb-seed.html
+      - MB_RUN_MODE=${MB_RUN_MODE:-server}
       - MB_SEED_SUBMIT=${MB_SEED_SUBMIT:-false}
       - MB_SEED_SERVE_PORT=${MB_SEED_SERVE_PORT:-8787}
     volumes:

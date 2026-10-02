@@ -1,0 +1,34 @@
+# Copier ce fichier et renommer (ex. mon-artiste-album-expanded.yaml)
+# Puis : POST /v1/album/seed {"config": "mon-artiste-album-expanded.yaml"}
+
+name: "Titre album"
+disambiguation: "Expanded edition"
+release_group_mbid: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+artist_mbid: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+artist_name: "Nom artiste"
+
+source_release_mbid: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+status: official
+medium_format: CD
+secondary_type: Album
+language: eng
+script: Latn
+
+barcode: ""
+event_country: US
+event_year: 2020
+event_month: 1
+event_day: 1
+
+label_mbid: ""
+catalog_number: ""
+
+edit_note: |
+  Édition ajoutée via lidarr-musicbrainz — source Discogs / scan.
+
+bonus_tracks: []
+  # - position: 16
+  #   title: Bonus track
+  #   recording_mbid: null
+  #   length_ms: 180000

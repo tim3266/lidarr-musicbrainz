@@ -127,7 +127,20 @@ Réponses `recommended_action` typiques :
 3. Vérifier tracklist, **edit note**, soumettre l’edit.
 4. **Lidarr** : Refresh artiste → album → choisir la release (ex. **Expanded edition**, 17 pistes) → Search ou import manuel.
 
-Exemple YAML : [examples/justin-bieber-journals-expanded.yaml](examples/justin-bieber-journals-expanded.yaml) (copie possible dans `config/` sur OMV).
+### Autre album que Journals
+
+Justin Bieber n’est **qu’un exemple** (`examples/` et copie dans `config/`). Rien n’est publié automatiquement en mode **`server`** (défaut).
+
+1. Trouve le **release group** MBID sur [MusicBrainz](https://musicbrainz.org) (type *Release group*, pas une release CD).
+2. `GET /v1/album/{mbid}/suggest` → voir si tu dois **seed** MB ou seulement **refresh Lidarr**.
+3. Crée un YAML dans `config/` à partir de [config/album-template.yaml](config/album-template.yaml).
+4. `POST /v1/album/seed` avec `{"config": "ton-fichier.yaml"}`.
+
+Lister les YAML disponibles : `GET /v1/configs`.
+
+**Éviter** `MB_RUN_MODE=once` + `MB_SEED_SUBMIT=true` avec le YAML Justin au boot : ça ne relancerait que cet exemple. En **`server`**, tu choisis l’album à chaque `POST /seed`.
+
+Exemple : [examples/justin-bieber-journals-expanded.yaml](examples/justin-bieber-journals-expanded.yaml).
 
 ---
 
