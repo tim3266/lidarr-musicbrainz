@@ -14,6 +14,7 @@ from urllib.parse import parse_qs, urlparse
 from lidarr_musicbrainz.config_loader import load_yaml_config, seed_from_dict
 from lidarr_musicbrainz.job import run_seed_job
 from lidarr_musicbrainz.status import album_status
+from lidarr_musicbrainz.suggest import suggest_album
 
 UUID_RE = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
@@ -76,6 +77,17 @@ class AlbumHandler(BaseHTTPRequestHandler):
                 _json_response(self, 500, {"error": str(exc)})
             return
 
+        match = re.match(r"^/v1/album/([0-9a-f-]{36})/suggest$", path, re.I)
+        if match:
+            if not _check_api_key(self):
+                _unauthorized(self)
+                return
+            try:
+                _json_response(self, 200, suggest_album(match.group(1)))
+            except Exception as exc:  # noqa: BLE001
+                _json_response(self, 500, {"error": str(exc)})
+            return
+
         _json_response(self, 404, {"error": "Not found", "path": path})
 
     def do_POST(self) -> None:
@@ -131,12 +143,24 @@ class AlbumHandler(BaseHTTPRequestHandler):
                 raise ValueError(f"Config not found: {body['config']}")
             return load_yaml_config(path)
 
-        if "release_group_mbid" in body:
+        if "release_group_mbid" in body and "source_release_mbid" in body:
             if not UUID_RE.match(str(body["release_group_mbid"])):
                 raise ValueError("Invalid release_group_mbid")
             return seed_from_dict(body)
 
-        raise ValueError("Provide 'config' (yaml path) or full seed object in JSON")
+        if body.get("from_suggest") is True:
+            rg = body.get("release_group_mbid")
+            if not rg or not UUID_RE.match(str(rg)):
+                raise ValueError("release_group_mbid required with from_suggest")
+            suggestion = suggest_album(str(rg))
+            proposed = suggestion.get("proposed_seed_yaml")
+            if not proposed:
+                raise ValueError(suggestion.get("message") or "No seed proposal for this album")
+            return seed_from_dict(proposed)
+
+        raise ValueError(
+            "Provide 'config', a full seed object, or {'from_suggest': true, 'release_group_mbid': '...'}"
+        )
 
     def _serve_file(self, path: Path) -> None:
         resolved = path.resolve()

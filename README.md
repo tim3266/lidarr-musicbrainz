@@ -56,12 +56,16 @@ Le conteneur tourne en **mode serveur** : il ne regénère plus le HTML qu’au 
 |---------|-----|------|
 | GET | `/health` | Santé |
 | GET | `/v1/album/{release-group-mbid}/status` | Releases MB (+ Lidarr si `LIDARR_API_KEY`) |
+| GET | `/v1/album/{release-group-mbid}/suggest` | Analyse + action recommandée + YAML proposé si besoin |
 | POST | `/v1/album/seed` | Génère `mb-seed.html` pour un YAML ou un JSON |
 
 Exemples :
 
 ```bash
-# État Journals (MusicBrainz vs cache Servarr via Lidarr)
+# Analyse Journals (MB vs Lidarr + que faire)
+curl -s http://192.168.1.27:8787/v1/album/37b21c23-b70c-40c1-8c24-191ff84242c1/suggest
+
+# État détaillé only
 curl -s http://192.168.1.27:8787/v1/album/37b21c23-b70c-40c1-8c24-191ff84242c1/status
 
 # Seed à la demande (YAML dans /config)
