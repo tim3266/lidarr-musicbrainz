@@ -1,0 +1,30 @@
+# Fragment pour /appdata/mediarr — à fusionner dans compose.override.yml
+# (mediarr.yml est regénéré par openmediavault ; ne pas l’éditer à la main)
+
+services:
+  lidarr-musicbrainz:
+    build:
+      context: ./lidarr-musicbrainz
+      dockerfile: Dockerfile
+    image: lidarr-musicbrainz:local
+    container_name: lidarr-musicbrainz
+    restart: unless-stopped
+    env_file:
+      - mediarr.env
+    environment:
+      - TZ=Europe/Paris
+      - MB_SEED_CONFIG=${MB_SEED_CONFIG:-/app/examples/justin-bieber-journals-expanded.yaml}
+      - MB_SEED_HTML=/output/mb-seed.html
+      - MB_SEED_SUBMIT=${MB_SEED_SUBMIT:-false}
+      - MB_SEED_SERVE_PORT=${MB_SEED_SERVE_PORT:-8787}
+    volumes:
+      - ./lidarr-musicbrainz/output:/output
+      # YAML perso (optionnel) :
+      # - ./lidarr-musicbrainz/config:/config:ro
+    ports:
+      - "${MB_SEED_PORT:-8787}:8787"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

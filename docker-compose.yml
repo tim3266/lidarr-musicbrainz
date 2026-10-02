@@ -1,0 +1,13 @@
+# Développement local ou stack standalone
+services:
+  lidarr-musicbrainz:
+    build: .
+    env_file:
+      - .env
+    environment:
+      MB_SEED_SERVE_PORT: "8787"
+    ports:
+      - "8787:8787"
+    volumes:
+      - ./output:/output
+      - ./examples:/config:ro
