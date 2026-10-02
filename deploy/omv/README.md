@@ -29,13 +29,24 @@ Ne commite **jamais** `mediarr.env`.
 
 Copie le service `lidarr-musicbrainz` depuis `deploy/omv/docker-compose.yml` dans `/appdata/mediarr/compose.override.yml` (ou inclue-le).
 
-Puis :
+Puis **toujours build avant up** (l’image n’existe pas sur Docker Hub) :
 
 ```bash
 cd /appdata/mediarr
+ls lidarr-musicbrainz/Dockerfile   # doit exister (git clone)
 docker compose build lidarr-musicbrainz
 docker compose up -d lidarr-musicbrainz
 ```
+
+### Erreur « pull access denied for lidarr-musicbrainz »
+
+Compose a tenté de **télécharger** l’image au lieu de la **construire**. Causes fréquentes :
+
+1. **`docker compose up` sans `build` avant** → lancer `docker compose build lidarr-musicbrainz` d’abord.
+2. **Pas de clone** → `git clone …` dans `/appdata/mediarr/lidarr-musicbrainz`.
+3. **Mauvais répertoire** → les commandes depuis `/appdata/mediarr` (là où sont `mediarr.yml` et `compose.override.yml`).
+
+Le service utilise `pull_policy: never` pour éviter ce pull automatique.
 
 ## 4. Utilisation
 

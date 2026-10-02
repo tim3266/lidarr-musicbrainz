@@ -7,6 +7,8 @@ services:
       context: ./lidarr-musicbrainz
       dockerfile: Dockerfile
     image: lidarr-musicbrainz:local
+    # Pas d’image sur Docker Hub : ne jamais pull, uniquement build local
+    pull_policy: never
     container_name: lidarr-musicbrainz
     restart: unless-stopped
     env_file:
