@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lidarr — démo plugin MusicBrainz (maquette)</title>
+  <style>
+    :root {
+      --bg: #1e2125;
+      --panel: #262a2f;
+      --border: #3a3f47;
+      --text: #e6e6e6;
+      --muted: #9aa3ad;
+      --accent: #5d9cec;
+      --warn: #f0ad4e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+    }
+    .banner {
+      background: #3d2f00;
+      color: #ffe8a3;
+      padding: 0.6rem 1rem;
+      text-align: center;
+      border-bottom: 1px solid #6b5200;
+    }
+    .layout { display: flex; min-height: calc(100vh - 42px); }
+    nav {
+      width: 220px;
+      background: #15171a;
+      border-right: 1px solid var(--border);
+      padding: 1rem 0;
+    }
+    nav h2 {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 0 1rem;
+      margin: 1rem 0 0.4rem;
+    }
+    nav a {
+      display: block;
+      padding: 0.45rem 1rem;
+      color: var(--text);
+      text-decoration: none;
+    }
+    nav a:hover { background: var(--panel); }
+    nav a.active { background: var(--panel); border-left: 3px solid var(--accent); padding-left: calc(1rem - 3px); }
+    main { flex: 1; padding: 1.5rem 2rem; }
+    h1 { font-size: 1.35rem; font-weight: 600; margin: 0 0 0.25rem; }
+    .sub { color: var(--muted); margin-bottom: 1.5rem; }
+    .tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .tab {
+      padding: 0.4rem 0.9rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--panel);
+      cursor: pointer;
+      color: var(--muted);
+    }
+    .tab.on { border-color: var(--accent); color: var(--text); }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1.25rem;
+      max-width: 720px;
+    }
+    label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 0.25rem; }
+    input {
+      width: 100%;
+      max-width: 420px;
+      padding: 0.5rem;
+      margin-bottom: 1rem;
+      background: #1a1d21;
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 4px;
+    }
+    .btns { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
+    button {
+      padding: 0.45rem 0.9rem;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: #343a42;
+      color: var(--text);
+      cursor: not-allowed;
+      opacity: 0.85;
+    }
+    button.primary { background: #3a6ea5; border-color: #4a7eb5; }
+    .note { font-size: 12px; color: var(--muted); margin-top: 1rem; line-height: 1.5; }
+    .album-head { display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1rem; }
+    .cover {
+      width: 120px; height: 120px; background: #111;
+      border: 1px solid var(--border); border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--muted); font-size: 12px;
+    }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="banner">
+    Maquette statique — ce n’est pas Lidarr. Aucun bouton n’appelle le serveur.
+  </div>
+  <div class="layout">
+    <nav>
+      <h2>Menu</h2>
+      <a href="#" data-view="album">Albums</a>
+      <a href="#" data-view="settings">Settings</a>
+      <h2>System</h2>
+      <a href="#" data-view="plugins" class="active">Plugins</a>
+    </nav>
+    <main>
+      <section id="view-plugins">
+        <h1>Plugins</h1>
+        <p class="sub">System → Plugins (page réelle après install depuis GitHub)</p>
+        <div class="panel">
+          <p><strong>MusicBrainz Helper</strong> — tim3266</p>
+          <p class="note">Un vrai plugin apparaîtrait ici une fois installé via l’URL du repo.</p>
+        </div>
+      </section>
+
+      <section id="view-settings" class="hidden">
+        <h1>Settings</h1>
+        <p class="sub">Où un plugin « fin » irait le plus souvent (pas garanti sous System)</p>
+        <div class="tabs">
+          <span class="tab">General</span>
+          <span class="tab">Metadata</span>
+          <span class="tab on">MusicBrainz Helper</span>
+        </div>
+        <div class="panel">
+          <label>URL du service (lidarr-musicbrainz)</label>
+          <input type="text" value="http://192.168.1.27:8787" readonly />
+          <label>Clé API (LIDARR_MB_API_KEY)</label>
+          <input type="password" value="********" readonly />
+          <div class="btns">
+            <button class="primary">Tester la connexion</button>
+            <button>Enregistrer</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-album" class="hidden">
+        <h1>Journals</h1>
+        <p class="sub">Justin Bieber — fiche album (boutons = objectif futur, non supportés par l’API plugin aujourd’hui)</p>
+        <div class="album-head">
+          <div class="cover">Cover</div>
+          <div>
+            <p><strong>Release group</strong> 37b21c23-…</p>
+            <div class="btns">
+              <button class="primary">Analyser (suggest)</button>
+              <button>Préparer edit MusicBrainz</button>
+              <button>Refresh artiste</button>
+            </div>
+            <p class="note">
+              Sur Lidarr actuel, ces actions ne peuvent pas être ajoutées ici via un plugin simple ;
+              elles passeraient par Settings, un lien externe, ou un userscript.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script>
+    const views = { plugins: "view-plugins", settings: "view-settings", album: "view-album" };
+    document.querySelectorAll("nav a[data-view]").forEach((a) => {
+      a.addEventListener("click", (e) => {
+        e.preventDefault();
+        document.querySelectorAll("nav a").forEach((x) => x.classList.remove("active"));
+        a.classList.add("active");
+        Object.values(views).forEach((id) => document.getElementById(id).classList.add("hidden"));
+        document.getElementById(views[a.dataset.view]).classList.remove("hidden");
+      });
+    });
+  </script>
+</body>
+</html>

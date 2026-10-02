@@ -58,6 +58,16 @@ class AlbumHandler(BaseHTTPRequestHandler):
             _json_response(self, 200, {"ok": True})
             return
 
+        if path == "/plugin-demo/preview.html":
+            demo = Path("/app/plugin-demo/preview.html")
+            if not demo.is_file():
+                demo = Path(__file__).resolve().parents[2] / "plugin-demo" / "preview.html"
+            if demo.is_file():
+                self._serve_static_anywhere(demo)
+            else:
+                _json_response(self, 404, {"error": "Demo file missing"})
+            return
+
         if path == "/v1/configs":
             if not _check_api_key(self):
                 _unauthorized(self)
@@ -180,17 +190,11 @@ class AlbumHandler(BaseHTTPRequestHandler):
             "Provide 'config', a full seed object, or {'from_suggest': true, 'release_group_mbid': '...'}"
         )
 
-    def _serve_file(self, path: Path) -> None:
+    def _serve_static_anywhere(self, path: Path) -> None:
         resolved = path.resolve()
-        try:
-            resolved.relative_to(self.output_dir.resolve())
-        except ValueError:
-            _json_response(self, 403, {"error": "Forbidden"})
-            return
         if not resolved.is_file():
             _json_response(self, 404, {"error": "File not found"})
             return
-
         mime, _ = mimetypes.guess_type(str(resolved))
         data = resolved.read_bytes()
         self.send_response(200)
@@ -198,6 +202,15 @@ class AlbumHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)
+
+    def _serve_file(self, path: Path) -> None:
+        resolved = path.resolve()
+        try:
+            resolved.relative_to(self.output_dir.resolve())
+        except ValueError:
+            _json_response(self, 403, {"error": "Forbidden"})
+            return
+        self._serve_static_anywhere(resolved)
 
 
 def serve(host: str, port: int, output_dir: Path, config_dir: Path) -> None:
