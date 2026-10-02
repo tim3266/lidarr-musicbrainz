@@ -22,13 +22,18 @@ UUID_RE = re.compile(
 )
 
 
+def _write_body(handler: BaseHTTPRequestHandler, body: bytes) -> None:
+    if handler.command != "HEAD":
+        handler.wfile.write(body)
+
+
 def _json_response(handler: BaseHTTPRequestHandler, code: int, payload: Any) -> None:
     body = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
     handler.send_response(code)
     handler.send_header("Content-Type", "application/json; charset=utf-8")
     handler.send_header("Content-Length", str(len(body)))
     handler.end_headers()
-    handler.wfile.write(body)
+    _write_body(handler, body)
 
 
 def _unauthorized(handler: BaseHTTPRequestHandler) -> None:
@@ -43,12 +48,42 @@ def _check_api_key(handler: BaseHTTPRequestHandler) -> bool:
     return got == required
 
 
+def _plugin_demo_roots() -> list[Path]:
+    roots: list[Path] = []
+    for candidate in (
+        Path("/app/plugin-demo"),
+        Path(__file__).resolve().parents[2] / "plugin-demo",
+    ):
+        if candidate.is_dir():
+            roots.append(candidate)
+    return roots
+
+
+def _plugin_demo_file(relative: str) -> Path | None:
+    rel = relative.lstrip("/").replace("\\", "/")
+    if not rel or ".." in rel.split("/"):
+        return None
+    for root in _plugin_demo_roots():
+        resolved_root = root.resolve()
+        target = (resolved_root / rel).resolve()
+        try:
+            target.relative_to(resolved_root)
+        except ValueError:
+            continue
+        if target.is_file():
+            return target
+    return None
+
+
 class AlbumHandler(BaseHTTPRequestHandler):
     output_dir: Path = Path("/output")
     config_dir: Path = Path("/config")
 
     def log_message(self, fmt: str, *args: Any) -> None:
         print(f"{self.address_string()} - {fmt % args}")
+
+    def do_HEAD(self) -> None:
+        self.do_GET()
 
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
@@ -58,14 +93,21 @@ class AlbumHandler(BaseHTTPRequestHandler):
             _json_response(self, 200, {"ok": True})
             return
 
-        if path == "/plugin-demo/preview.html":
-            demo = Path("/app/plugin-demo/preview.html")
-            if not demo.is_file():
-                demo = Path(__file__).resolve().parents[2] / "plugin-demo" / "preview.html"
-            if demo.is_file():
-                self._serve_static_anywhere(demo)
+        if path in ("/", "/app", "/app.html"):
+            app_page = _plugin_demo_file("app.html")
+            if app_page:
+                self._serve_static_anywhere(app_page)
             else:
-                _json_response(self, 404, {"error": "Demo file missing"})
+                _json_response(self, 404, {"error": "App page missing — rebuild image"})
+            return
+
+        if path.startswith("/plugin-demo/"):
+            rel = path[len("/plugin-demo/") :]
+            static = _plugin_demo_file(rel)
+            if static:
+                self._serve_static_anywhere(static)
+            else:
+                _json_response(self, 404, {"error": "Not found", "path": path})
             return
 
         if path == "/v1/configs":
@@ -201,7 +243,7 @@ class AlbumHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", mime or "application/octet-stream")
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
-        self.wfile.write(data)
+        _write_body(self, data)
 
     def _serve_file(self, path: Path) -> None:
         resolved = path.resolve()

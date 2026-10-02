@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MusicBrainz Helper</title>
+  <style>
+    :root {
+      --bg: #1e2125;
+      --panel: #262a2f;
+      --border: #3a3f47;
+      --text: #e6e6e6;
+      --muted: #9aa3ad;
+      --accent: #5d9cec;
+      --ok: #5cb85c;
+      --err: #d9534f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
+    h1 { font-size: 1.35rem; font-weight: 600; margin: 0 0 0.35rem; }
+    .sub { color: var(--muted); margin-bottom: 1.25rem; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+    label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 0.25rem; }
+    input, textarea {
+      width: 100%;
+      padding: 0.5rem;
+      margin-bottom: 0.75rem;
+      background: #1a1d21;
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 4px;
+      font-family: inherit;
+    }
+    textarea { min-height: 160px; font-family: ui-monospace, monospace; font-size: 12px; }
+    .row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.25rem; }
+    button, .btn {
+      padding: 0.45rem 0.9rem;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: #343a42;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 14px;
+      text-decoration: none;
+      display: inline-block;
+    }
+    button.primary, .btn.primary { background: #3a6ea5; border-color: #4a7eb5; }
+    button:disabled { opacity: 0.6; cursor: wait; }
+    .status { font-size: 12px; color: var(--muted); margin-top: 0.5rem; }
+    .status.ok { color: var(--ok); }
+    .status.err { color: var(--err); }
+    .links { font-size: 13px; }
+    .links a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>MusicBrainz Helper</h1>
+    <p class="sub">Compare MusicBrainz / Servarr (Lidarr) et prépare les seeds pour l’éditeur MB.</p>
+
+    <div class="panel">
+      <label for="apiKey">Clé API (LIDARR_MB_API_KEY — optionnelle si le serveur n’en exige pas)</label>
+      <input type="password" id="apiKey" autocomplete="off" placeholder="Enregistrée dans ce navigateur uniquement" />
+      <label for="rg">Release group MBID (album Lidarr)</label>
+      <input type="text" id="rg" placeholder="37b21c23-b70c-40c1-8c24-191ff84242c1" spellcheck="false" />
+      <div class="row">
+        <button type="button" class="primary" id="btnSuggest">Analyser (suggest)</button>
+        <button type="button" id="btnStatus">Status détaillé</button>
+        <a class="btn" id="linkSeed" href="/mb-seed.html" target="_blank" rel="noopener">Dernier seed HTML</a>
+      </div>
+      <p class="status" id="msg"></p>
+    </div>
+
+    <div class="panel">
+      <label for="out">Réponse</label>
+      <textarea id="out" readonly placeholder="Résultat JSON ici…"></textarea>
+    </div>
+
+    <p class="links">
+      <a href="/health" target="_blank" rel="noopener">/health</a>
+      ·
+      <a href="https://github.com/tim3266/lidarr-musicbrainz" target="_blank" rel="noopener">Documentation</a>
+    </p>
+  </div>
+  <script>
+    const KEY = "lmb_api_key";
+    const apiKeyEl = document.getElementById("apiKey");
+    const rgEl = document.getElementById("rg");
+    const outEl = document.getElementById("out");
+    const msgEl = document.getElementById("msg");
+    const params = new URLSearchParams(location.search);
+    if (params.get("rg")) rgEl.value = params.get("rg");
+    apiKeyEl.value = localStorage.getItem(KEY) || "";
+
+    function headers() {
+      const h = { Accept: "application/json" };
+      const k = apiKeyEl.value.trim();
+      if (k) h["X-Api-Key"] = k;
+      return h;
+    }
+
+    function setMsg(text, kind) {
+      msgEl.textContent = text;
+      msgEl.className = "status" + (kind ? " " + kind : "");
+    }
+
+    async function fetchJson(path) {
+      localStorage.setItem(KEY, apiKeyEl.value.trim());
+      const rg = rgEl.value.trim();
+      if (!/^[0-9a-f-]{36}$/i.test(rg)) {
+        setMsg("MBID release group invalide (36 caractères).", "err");
+        return;
+      }
+      setMsg("Requête en cours…", "");
+      outEl.value = "";
+      try {
+        const res = await fetch(path.replace("{rg}", encodeURIComponent(rg)), { headers: headers() });
+        const text = await res.text();
+        let data;
+        try { data = JSON.parse(text); outEl.value = JSON.stringify(data, null, 2); }
+        catch { outEl.value = text; }
+        if (!res.ok) setMsg("HTTP " + res.status, "err");
+        else setMsg("OK", "ok");
+      } catch (e) {
+        setMsg(String(e.message || e), "err");
+      }
+    }
+
+    document.getElementById("btnSuggest").addEventListener("click", () =>
+      fetchJson("/v1/album/{rg}/suggest"));
+    document.getElementById("btnStatus").addEventListener("click", () =>
+      fetchJson("/v1/album/{rg}/status"));
+  </script>
+</body>
+</html>

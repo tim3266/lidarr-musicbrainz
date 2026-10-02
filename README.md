@@ -79,7 +79,12 @@ Port par défaut : **8787**.
 | POST | `/v1/album/seed` | Génère `mb-seed.html` |
 | GET | `/mb-seed.html` | Dernière génération |
 | GET | `/output/{job_id}/mb-seed.html` | Génération d’un job précis |
+| GET | `/app.html` | UI web (analyse release group, lien seed) — cible du userscript Lidarr |
 | GET | `/plugin-demo/preview.html` | Maquette UI plugin Lidarr (démo visuelle) |
+
+### Lien dans l’UI Lidarr
+
+Lidarr ne permet pas d’ajouter un menu natif sans plugin .NET. Le dépôt fournit un **userscript** ([`plugin-demo/lidarr-musicbrainz.user.js`](plugin-demo/lidarr-musicbrainz.user.js)) : entrée **System → MusicBrainz Helper** qui ouvre `http://<host>:8787/app.html` dans une nouvelle fenêtre. Voir [plugin-demo/README.md](plugin-demo/README.md).
 
 **Release group** = ce que Lidarr appelle l’« album » (MBID du groupe, pas d’une pression CD).
 

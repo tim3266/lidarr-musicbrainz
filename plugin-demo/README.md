@@ -1,5 +1,22 @@
 # Démo visuelle plugin Lidarr (sans code .NET)
 
+## Lien dans Lidarr (userscript)
+
+Comme la maquette, mais dans **ton** Lidarr :
+
+1. Installe **Tampermonkey** (ou Violentmonkey) dans le navigateur où tu ouvres Lidarr.
+2. Crée un script à partir de [`lidarr-musicbrainz.user.js`](lidarr-musicbrainz.user.js).
+3. Adapte en tête de fichier :
+   - `@match` → l’URL de ton Lidarr (port **8686**)
+   - `MB_APP_URL` → ton service, ex. `http://192.168.1.27:8787/app.html`
+4. Recharge Lidarr : sous **System**, une ligne **MusicBrainz Helper** apparaît ; un clic ouvre l’app dans **une nouvelle fenêtre**.
+
+Sur **System → Plugins**, un encart rappelle le même bouton (comme la démo « plugin installé »).
+
+Page servie par Docker : `http://<host>:8787/app.html` (analyse MBID, lien vers le dernier seed).
+
+---
+
 ## Voir la maquette
 
 Ouvre dans un navigateur :
