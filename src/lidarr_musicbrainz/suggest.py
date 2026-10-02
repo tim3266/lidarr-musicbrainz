@@ -136,7 +136,28 @@ def suggest_album(release_group_mbid: str) -> dict[str, Any]:
         message = "Tracklists manquantes ou incomplètes sur MusicBrainz."
     elif status.get("lidarr_configured") and not lidarr_releases:
         recommended_action = "refresh_lidarr"
-        message = "Album non trouvé via Lidarr lookup — ajouter l’artiste ou vérifier le release group MBID."
+        if status.get("lidarr_in_library"):
+            message = (
+                "Album présent dans Lidarr mais éditions non lues — refresh artiste, "
+                "ou vérifier LIDARR_URL (http://lidarr:8686 depuis Docker)."
+            )
+        else:
+            best = next(
+                (r for r in enriched if (r.get("disambiguation") or "").lower().find("expand") >= 0),
+                None,
+            ) or next((r for r in enriched if (r.get("track_count") or 0) >= 17), None)
+            if best:
+                message = (
+                    f"MusicBrainz a déjà « {best.get('disambiguation') or best.get('title')} » "
+                    f"({best.get('track_count')} pistes, {best['id']}). "
+                    "Refresh artiste Lidarr, choisir cette édition, puis import — pas de seed MB. "
+                    "Si la bibliothèque n’apparaît pas ici : LIDARR_URL + album ajouté dans Lidarr."
+                )
+            else:
+                message = (
+                    "Aucune édition Lidarr visible — album absent de la bibliothèque ou "
+                    "LIDARR_URL incorrect (127.0.0.1 ne marche pas depuis le conteneur)."
+                )
     elif status.get("lidarr_configured") and not lidarr_has_richest:
         recommended_action = "refresh_lidarr"
         message = (
@@ -211,5 +232,7 @@ def suggest_album(release_group_mbid: str) -> dict[str, Any]:
         "proposed_seed_yaml": proposed_seed_yaml,
         "lidarr_releases": lidarr_releases,
         "lidarr_configured": status.get("lidarr_configured"),
+        "lidarr_in_library": status.get("lidarr_in_library"),
+        "lidarr_album_title": status.get("lidarr_album_title"),
         "lidarr_error": status.get("lidarr_error"),
     }

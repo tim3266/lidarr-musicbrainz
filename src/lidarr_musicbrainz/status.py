@@ -7,10 +7,15 @@ from typing import Any
 
 import requests
 
+from lidarr_musicbrainz.lidarr_client import (
+    library_album_by_foreign_id,
+    lidarr_library_releases,
+)
 from lidarr_musicbrainz.mb_api import get_release_group_releases, get_release_track_count
 
 
-def lidarr_album_lookup(release_group_mbid: str) -> list[dict[str, Any]]:
+def lidarr_metadata_lookup(release_group_mbid: str) -> list[dict[str, Any]]:
+    """Servarr metadata search (album not necessarily in library)."""
     base = os.environ.get("LIDARR_URL", "http://127.0.0.1:8686").rstrip("/")
     api_key = os.environ.get("LIDARR_API_KEY", "")
     if not api_key:
@@ -41,26 +46,36 @@ def album_status(release_group_mbid: str) -> dict[str, Any]:
 
     lidarr_releases: list[dict[str, Any]] = []
     lidarr_configured = bool(os.environ.get("LIDARR_API_KEY"))
+    lidarr_in_library = False
+    lidarr_album_title: str | None = None
+
     if lidarr_configured:
         try:
-            lookup = lidarr_album_lookup(release_group_mbid)
-            if lookup:
-                for rel in lookup[0].get("releases") or []:
-                    lidarr_releases.append(
-                        {
-                            "title": rel.get("title"),
-                            "disambiguation": rel.get("disambiguation", ""),
-                            "releaseDate": rel.get("releaseDate"),
-                            "trackCount": rel.get("trackCount"),
-                            "status": rel.get("status"),
-                        }
-                    )
+            library = library_album_by_foreign_id(release_group_mbid)
+            if library:
+                lidarr_in_library = True
+                lidarr_album_title = library.get("title")
+                lidarr_releases = lidarr_library_releases(release_group_mbid)
+            else:
+                lookup = lidarr_metadata_lookup(release_group_mbid)
+                if lookup:
+                    for rel in lookup[0].get("releases") or []:
+                        lidarr_releases.append(
+                            {
+                                "title": rel.get("title"),
+                                "disambiguation": rel.get("disambiguation", ""),
+                                "releaseDate": rel.get("releaseDate"),
+                                "trackCount": rel.get("trackCount"),
+                                "status": rel.get("status"),
+                            }
+                        )
         except requests.RequestException as exc:
             return {
                 "release_group_mbid": release_group_mbid,
                 "musicbrainz": mb_summary,
                 "lidarr": lidarr_releases,
                 "lidarr_configured": True,
+                "lidarr_in_library": lidarr_in_library,
                 "lidarr_error": str(exc),
             }
 
@@ -69,4 +84,6 @@ def album_status(release_group_mbid: str) -> dict[str, Any]:
         "musicbrainz": mb_summary,
         "lidarr": lidarr_releases,
         "lidarr_configured": lidarr_configured,
+        "lidarr_in_library": lidarr_in_library,
+        "lidarr_album_title": lidarr_album_title,
     }

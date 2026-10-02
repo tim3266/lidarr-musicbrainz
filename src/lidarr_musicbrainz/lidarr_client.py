@@ -16,6 +16,47 @@ def _lidarr_session() -> tuple[str, dict[str, str]] | None:
     return base, {"X-Api-Key": api_key}
 
 
+def library_album_by_foreign_id(foreign_album_id: str) -> dict[str, Any] | None:
+    """Album already in the Lidarr library (not metadata lookup)."""
+    session = _lidarr_session()
+    if not session:
+        return None
+    base, headers = session
+    response = requests.get(
+        f"{base}/api/v1/album",
+        params={"foreignAlbumId": foreign_album_id},
+        headers=headers,
+        timeout=60,
+    )
+    if response.status_code == 404:
+        return None
+    response.raise_for_status()
+    data = response.json()
+    if isinstance(data, list):
+        return data[0] if data else None
+    return data if isinstance(data, dict) else None
+
+
+def lidarr_library_releases(foreign_album_id: str) -> list[dict[str, Any]]:
+    album = library_album_by_foreign_id(foreign_album_id)
+    if not album:
+        return []
+    out: list[dict[str, Any]] = []
+    for rel in album.get("releases") or []:
+        out.append(
+            {
+                "foreignReleaseId": rel.get("foreignReleaseId"),
+                "title": rel.get("title"),
+                "disambiguation": rel.get("disambiguation", ""),
+                "releaseDate": rel.get("releaseDate"),
+                "trackCount": rel.get("trackCount"),
+                "status": rel.get("status"),
+                "monitored": rel.get("monitored"),
+            }
+        )
+    return out
+
+
 def fetch_queue(page_size: int = 250) -> list[dict[str, Any]]:
     session = _lidarr_session()
     if not session:
