@@ -1,9 +1,12 @@
-# Développement local ou stack standalone
+# Dev local uniquement. Sur OMV : lancer depuis /appdata/mediarr (voir deploy/omv/).
 services:
   lidarr-musicbrainz:
     build: .
+    image: lidarr-musicbrainz:local
+    pull_policy: never
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       MB_SEED_SERVE_PORT: "8787"
     ports:

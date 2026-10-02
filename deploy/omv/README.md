@@ -38,6 +38,9 @@ docker compose build lidarr-musicbrainz
 docker compose up -d lidarr-musicbrainz
 ```
 
+**Important :** les commandes `docker compose` se lancent depuis **`/appdata/mediarr`**, pas depuis `lidarr-musicbrainz/`.  
+Sinon Compose cherche un `.env` dans le clone et n’utilise pas `mediarr.env` ni `compose.override.yml`.
+
 ### Erreur « pull access denied for lidarr-musicbrainz »
 
 Compose a tenté de **télécharger** l’image au lieu de la **construire**. Causes fréquentes :
