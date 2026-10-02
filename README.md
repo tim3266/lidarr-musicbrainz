@@ -79,6 +79,7 @@ Port par défaut : **8787**.
 | POST | `/v1/album/seed` | Génère `mb-seed.html` |
 | GET | `/mb-seed.html` | Dernière génération |
 | GET | `/output/{job_id}/mb-seed.html` | Génération d’un job précis |
+| GET | `/plugin-demo/preview.html` | Maquette UI plugin Lidarr (démo visuelle) |
 
 **Release group** = ce que Lidarr appelle l’« album » (MBID du groupe, pas d’une pression CD).
 
