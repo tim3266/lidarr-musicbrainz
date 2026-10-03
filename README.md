@@ -45,12 +45,14 @@ L’image n’est **pas** sur Docker Hub : toujours `docker compose build` avant
 
 | Variable | Obligatoire | Description |
 |----------|-------------|-------------|
-| `MUSICBRAINZ_USER` | Non | Compte MusicBrainz (uniquement si submit auto) |
+| `MUSICBRAINZ_USER` | Non | Compte MusicBrainz (submit auto + détection « éditeur = toi » dans `/app`) |
 | `MUSICBRAINZ_PASSWORD` | Non | Mot de passe MB — **ne jamais commiter** |
+| `MUSICBRAINZ_MY_RELEASE_MBIDS` | Non | MBIDs de releases que **tu** as créées (virgules) — badge « Toi » sans scrape MB |
 | `MUSICBRAINZ_APP_CONTACT` | Recommandé | Contact User-Agent MB (`mailto:…` ou URL GitHub) |
 | `LIDARR_URL` | Non | URL Lidarr, ex. `http://127.0.0.1:8686` |
 | `LIDARR_API_KEY` | Non | Clé Lidarr (Settings → General) — pour `/status`, `/suggest`, queue `/reconcile` |
 | `MB_ALLOWED_SCAN_PATHS` | Non | Racines autorisées pour lire les fichiers (défaut `/downloads,/music,…`) |
+| `SERVARR_METADATA_URL` | Non | API cache Servarr (défaut `https://api.lidarr.audio/api/v0.4`) |
 | `LIDARR_MB_API_KEY` | Recommandé | **Clé que tu inventes** pour protéger **cet outil** (header `X-Api-Key`). Ce n’est **pas** la clé Lidarr. |
 | `MB_SEED_SERVE_PORT` | Non | Port HTTP (défaut `8787`) |
 | `MB_RUN_MODE` | Non | `server` (défaut) ou `once` (génère le HTML au boot puis quitte) |
@@ -76,7 +78,8 @@ Port par défaut : **8787**.
 |---------|--------|------|
 | GET | `/health` | Santé |
 | GET | `/v1/album/{release-group-mbid}/status` | Liste des releases MB + comparaison Lidarr |
-| GET | `/v1/album/{release-group-mbid}/suggest` | Analyse : que faire ? YAML proposé si seed MB utile |
+| GET | `/v1/album/{release-group-mbid}/suggest` | Analyse metadata seule (sans fichiers) |
+| POST | `/v1/album/{release-group-mbid}/suggest` | Comme GET + **`use_queue`** ou **`scan_path`** : recommandation alignée sur le nombre de fichiers |
 | POST | `/v1/album/{release-group-mbid}/reconcile` | Compare **fichiers** (dossier ou queue Lidarr) vs MusicBrainz ; propose un seed |
 | POST | `/v1/album/seed` | Génère `mb-seed.html` |
 | GET | `/mb-seed.html` | Dernière génération |
@@ -110,12 +113,12 @@ curl -s -X POST "${HDR[@]}" "$API/v1/album/seed" \
 # 3) Ouvrir html_url dans le navigateur (connecté à MusicBrainz), valider l’edit
 ```
 
-Seed depuis la suggestion auto (si `proposed_seed_yaml` non null) :
+Seed depuis les fichiers (queue Lidarr ou dossier), comme le bouton dans `/app.html` :
 
 ```bash
 curl -s -X POST "${HDR[@]}" "$API/v1/album/seed" \
   -H 'Content-Type: application/json' \
-  -d '{"from_suggest": true, "release_group_mbid": "37b21c23-b70c-40c1-8c24-191ff84242c1"}'
+  -d '{"from_reconcile": true, "release_group_mbid": "37b21c23-b70c-40c1-8c24-191ff84242c1", "use_queue": true}'
 ```
 
 Réponses `recommended_action` typiques :

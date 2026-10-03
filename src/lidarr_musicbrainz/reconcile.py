@@ -6,8 +6,7 @@ import re
 import unicodedata
 from typing import Any
 
-from lidarr_musicbrainz.file_tracks import resolve_scan_path, scan_directory
-from lidarr_musicbrainz.lidarr_client import pick_queue_scan_path
+from lidarr_musicbrainz.album_files import resolve_album_file_scan
 from lidarr_musicbrainz.mb_api import get_release, get_release_group_releases
 from lidarr_musicbrainz.seed import BonusTrack, ReleaseSeed
 from lidarr_musicbrainz.suggest import (
@@ -73,48 +72,23 @@ def reconcile_album(
     scan_path: str | None = None,
     use_queue: bool = False,
 ) -> dict[str, Any]:
-    queue_info: dict[str, Any] | None = None
-    path_str = (scan_path or "").strip()
+    file_scan = resolve_album_file_scan(
+        release_group_mbid,
+        scan_path=scan_path,
+        use_queue=use_queue,
+    )
+    if file_scan.get("error") and not file_scan.get("file_tracks"):
+        return {"release_group_mbid": release_group_mbid, **file_scan}
 
-    if use_queue and not path_str:
-        from lidarr_musicbrainz.lidarr_client import _lidarr_session
-
-        if not _lidarr_session():
-            return {
-                "release_group_mbid": release_group_mbid,
-                "error": "LIDARR_URL et LIDARR_API_KEY requis pour use_queue.",
-            }
-        queue_info = pick_queue_scan_path(release_group_mbid)
-        if not queue_info:
-            return {
-                "release_group_mbid": release_group_mbid,
-                "error": "Aucun item en queue pour ce release group.",
-            }
-        if queue_info.get("output_path"):
-            path_str = queue_info["output_path"]
-        else:
-            return {
-                "release_group_mbid": release_group_mbid,
-                "error": queue_info.get("error", "Pas de outputPath en queue."),
-                "queue": queue_info.get("queue_item"),
-            }
-
-    if not path_str:
+    if not file_scan.get("file_tracks"):
         return {
             "release_group_mbid": release_group_mbid,
             "error": "Indique scan_path ou use_queue avec un grab Lidarr (outputPath).",
         }
 
-    try:
-        directory = resolve_scan_path(path_str)
-        file_tracks = scan_directory(directory)
-    except (ValueError, OSError, RuntimeError) as exc:
-        return {
-            "release_group_mbid": release_group_mbid,
-            "scan_path": path_str,
-            "queue": queue_info,
-            "error": str(exc),
-        }
+    file_tracks = file_scan["file_tracks"]
+    directory = file_scan["scan_path"]
+    queue_info = file_scan.get("queue")
 
     mb_releases = get_release_group_releases(release_group_mbid)
     enriched = _enrich_releases(mb_releases)

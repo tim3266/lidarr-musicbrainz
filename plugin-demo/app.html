@@ -24,7 +24,7 @@
       font-size: 14px;
       line-height: 1.45;
     }
-    .wrap { max-width: 720px; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
     h1 { font-size: 1.35rem; font-weight: 600; margin: 0 0 0.35rem; }
     .sub { color: var(--muted); margin-bottom: 1.25rem; }
     .panel {
@@ -45,7 +45,13 @@
       border-radius: 4px;
       font-family: inherit;
     }
-    textarea { min-height: 160px; font-family: ui-monospace, monospace; font-size: 12px; }
+    textarea { font-family: ui-monospace, monospace; font-size: 12px; }
+    textarea#out {
+      min-height: min(70vh, 720px);
+      height: min(70vh, 720px);
+      resize: vertical;
+      line-height: 1.4;
+    }
     .row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.25rem; }
     button, .btn {
       padding: 0.45rem 0.9rem;
@@ -65,6 +71,51 @@
     .status.err { color: var(--err); }
     .links { font-size: 13px; }
     .links a { color: var(--accent); }
+    .field-links { font-size: 13px; margin: -0.35rem 0 0.75rem; }
+    .field-links a { color: var(--accent); }
+    .field-links .mbid-inline { font-family: ui-monospace, monospace; font-size: 12px; color: var(--muted); }
+    .analysis-panel { margin-bottom: 0.75rem; }
+    .files-banner {
+      font-size: 13px;
+      padding: 0.65rem 0.75rem;
+      background: #1a1d21;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin-bottom: 0.75rem;
+    }
+    .files-banner strong { color: var(--text); }
+    table.analysis {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    table.analysis th,
+    table.analysis td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.65rem;
+      vertical-align: top;
+      text-align: left;
+    }
+    table.analysis th {
+      background: #1a1d21;
+      color: var(--muted);
+      font-weight: 600;
+      width: 28%;
+    }
+    table.analysis td { width: 36%; }
+    table.analysis .dim { color: var(--muted); font-size: 12px; margin-top: 0.25rem; }
+    table.analysis .mbid { font-family: ui-monospace, monospace; font-size: 11px; word-break: break-all; }
+    .analysis-empty { color: var(--muted); font-size: 13px; }
+    .me-badge {
+      display: inline-block;
+      margin-left: 0.35rem;
+      padding: 0.1rem 0.45rem;
+      border-radius: 3px;
+      background: #2d5a2d;
+      color: #cfeecf;
+      font-size: 11px;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
@@ -77,6 +128,10 @@
       <input type="password" id="apiKey" autocomplete="off" placeholder="Enregistrée dans ce navigateur uniquement" />
       <label for="rg">Release group MBID (album Lidarr)</label>
       <input type="text" id="rg" placeholder="37b21c23-b70c-40c1-8c24-191ff84242c1" spellcheck="false" />
+      <p class="field-links" id="mbRgLinkWrap" hidden>
+        <a id="mbRgLink" href="#" target="_blank" rel="noopener">Release group sur MusicBrainz</a>
+        <span class="mbid-inline" id="mbRgLinkMbid"></span>
+      </p>
       <label for="release">Release MBID (édition Lidarr surveillée — info)</label>
       <input type="text" id="release" placeholder="Optionnel — depuis le userscript sur la fiche album" spellcheck="false" />
       <label for="scanPath">Dossier des fichiers (optionnel — sinon queue Lidarr)</label>
@@ -88,14 +143,31 @@
         <button type="button" id="btnReconcilePath">Fichiers ↔ MB (dossier)</button>
       </div>
       <div class="row">
-        <button type="button" class="primary" id="btnCreateRelease">Créer une release (suggest MB)</button>
-        <button type="button" class="primary" id="btnCreateFromFiles">Créer une release (fichiers)</button>
+        <button type="button" class="primary" id="btnCreateFromFiles">Créer une release sur MusicBrainz (fichiers)</button>
       </div>
+      <p class="status dim" style="margin-top:0.35rem;color:var(--muted);font-size:12px;">
+        Prépare l’éditeur MB à partir de la queue Lidarr ou du dossier scanné — utile quand aucune release MB ne correspond exactement à tes pistes.
+      </p>
       <p class="status" id="msg"></p>
     </div>
 
+    <div class="panel analysis-panel" id="analysisPanel" hidden>
+      <label>Analyse</label>
+      <div id="analysisFiles" class="files-banner"></div>
+      <table class="analysis" id="analysisTable">
+        <thead>
+          <tr>
+            <th scope="col"></th>
+            <th scope="col">MusicBrainz</th>
+            <th scope="col">Lidarr</th>
+          </tr>
+        </thead>
+        <tbody id="analysisBody"></tbody>
+      </table>
+    </div>
+
     <div class="panel">
-      <label for="out">Réponse</label>
+      <label for="out">Réponse (JSON)</label>
       <textarea id="out" readonly placeholder="Résultat JSON ici…"></textarea>
     </div>
 
@@ -109,15 +181,40 @@
     const KEY = "lmb_api_key";
     const apiKeyEl = document.getElementById("apiKey");
     const rgEl = document.getElementById("rg");
+    const mbRgLinkWrap = document.getElementById("mbRgLinkWrap");
+    const mbRgLink = document.getElementById("mbRgLink");
+    const mbRgLinkMbid = document.getElementById("mbRgLinkMbid");
     const releaseEl = document.getElementById("release");
     const scanPathEl = document.getElementById("scanPath");
     const outEl = document.getElementById("out");
+    const analysisPanel = document.getElementById("analysisPanel");
+    const analysisFiles = document.getElementById("analysisFiles");
+    const analysisBody = document.getElementById("analysisBody");
     let lastReconcile = null;
     const msgEl = document.getElementById("msg");
     const params = new URLSearchParams(location.search);
     if (params.get("rg")) rgEl.value = params.get("rg");
     if (params.get("release")) releaseEl.value = params.get("release");
     apiKeyEl.value = localStorage.getItem(KEY) || "";
+
+    function mbReleaseGroupUrl(mbid) {
+      return `https://musicbrainz.org/release-group/${encodeURIComponent(mbid)}`;
+    }
+
+    function updateMbRgLink() {
+      const rg = rgEl.value.trim();
+      const ok = /^[0-9a-f-]{36}$/i.test(rg);
+      mbRgLinkWrap.hidden = !ok;
+      if (ok) {
+        mbRgLink.href = mbReleaseGroupUrl(rg);
+        mbRgLinkMbid.textContent = ` · ${rg}`;
+      } else {
+        mbRgLinkMbid.textContent = "";
+      }
+    }
+
+    rgEl.addEventListener("input", updateMbRgLink);
+    updateMbRgLink();
 
     function headers() {
       const h = { Accept: "application/json" };
@@ -131,6 +228,141 @@
       msgEl.className = "status" + (kind ? " " + kind : "");
     }
 
+    function esc(s) {
+      return String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function editionHtml(ed) {
+      if (!ed) return "<span class=\"dim\">—</span>";
+      const parts = [`<strong>${esc(ed.label)}</strong>`, `${ed.track_count ?? "?"} p.`];
+      if (ed.date) parts.push(esc(String(ed.date).slice(0, 10)));
+      if (ed.monitored === true) parts.push("surveillée");
+      else if (ed.monitored === false) parts.push("non surveillée");
+      let html = parts.join(" · ");
+      if (ed.artist_credit) {
+        html += `<div class="dim">Crédit release : ${esc(ed.artist_credit)}</div>`;
+      }
+      if (ed.mbid) {
+        html += `<div class="mbid">${esc(ed.mbid)}</div>`;
+      }
+      return html;
+    }
+
+    function renderAnalysis(data) {
+      const d = data?.analysis_display;
+      if (!d) {
+        analysisPanel.hidden = true;
+        return;
+      }
+      analysisPanel.hidden = false;
+      const f = d.files || {};
+      const bits = [];
+      if (f.track_count > 0) {
+        bits.push(`<strong>${f.track_count}</strong> piste${f.track_count > 1 ? "s" : ""} audio`);
+      } else {
+        bits.push("Aucun fichier scanné");
+      }
+      if (f.source === "queue") {
+        bits.push("source : queue Lidarr");
+        if (f.queue_title) bits.push(`« ${esc(f.queue_title)} »`);
+        if (f.queue_status) bits.push(`(${esc(f.queue_status)})`);
+      } else if (f.source === "path" && f.scan_path) {
+        bits.push(`dossier : <span class="mbid">${esc(f.scan_path)}</span>`);
+      }
+      if (f.error) bits.push(`<span class="status err">${esc(f.error)}</span>`);
+      if (d.target_track_count > 0) {
+        bits.push(`cible : ${d.target_track_count} pistes`);
+      }
+      analysisFiles.innerHTML = bits.join(" · ");
+
+      const mb = d.musicbrainz || {};
+      const ld = d.lidarr || {};
+      const mbArtist = mb.artist_name
+        ? esc(mb.artist_name)
+        : '<span class="dim">—</span>';
+      let mbArtistNote = "";
+      const rgMbid = (data.release_group_mbid || rgEl.value.trim() || "").toLowerCase();
+      if (mb.release_group_title || rgMbid) {
+        const title = mb.release_group_title ? esc(mb.release_group_title) : "Release group";
+        const rgLink = /^[0-9a-f-]{36}$/i.test(rgMbid)
+          ? `<a href="${esc(mbReleaseGroupUrl(rgMbid))}" target="_blank" rel="noopener">${title}</a>`
+          : title;
+        mbArtistNote = `<div class="dim">${rgLink}</div>`;
+      }
+      const ldArtist = ld.artist_name
+        ? esc(ld.artist_name)
+        : ld.configured
+          ? '<span class="dim">—</span>'
+          : '<span class="dim">LIDARR_API_KEY non configurée</span>';
+      let ldArtistNote = "";
+      if (ld.album_title) {
+        ldArtistNote = `<div class="dim">Album : ${esc(ld.album_title)}</div>`;
+      }
+      if (ld.in_library === false && ld.configured) {
+        ldArtistNote += '<div class="dim">Pas dans la bibliothèque Lidarr</div>';
+      }
+
+      let mbEditionExtra = "";
+      if (d.target_track_count > 0) {
+        mbEditionExtra = `<div class="dim">${mb.editions_at_target_count ?? 0} édition(s) MB à ${d.target_track_count} p.`;
+        if (mb.on_servarr_cache === false) {
+          mbEditionExtra += " · absente du cache Servarr";
+        } else if (mb.on_servarr_cache === true) {
+          mbEditionExtra += " · présente cache Servarr";
+        }
+        mbEditionExtra += "</div>";
+      } else if (mb.richest_track_count) {
+        mbEditionExtra = `<div class="dim">Édition la plus complète : ${mb.richest_track_count} p.</div>`;
+      }
+
+      let mbEditorCell = '<span class="dim">—</span>';
+      if (mb.creation_editor) {
+        mbEditorCell = `<strong>${esc(mb.creation_editor)}</strong>`;
+        if (mb.creation_editor_is_me === true) {
+          mbEditorCell += '<span class="me-badge">Toi</span>';
+        } else if (mb.creation_editor_is_me === false) {
+          mbEditorCell += '<span class="dim"> (autre compte)</span>';
+        }
+        if (mb.creation_edit_url) {
+          mbEditorCell += `<div class="dim"><a href="${esc(mb.creation_edit_url)}" target="_blank" rel="noopener">Edit « Add release »</a></div>`;
+        }
+      } else if (mb.creation_error) {
+        mbEditorCell = `<span class="dim">${esc(mb.creation_error)}</span>`;
+      } else {
+        mbEditorCell =
+          '<span class="dim">Configure MUSICBRAINZ_USER (+ mot de passe) ou MUSICBRAINZ_MY_RELEASE_MBIDS</span>';
+      }
+
+      let ldEditionExtra = "";
+      if (d.target_track_count > 0) {
+        ldEditionExtra = `<div class="dim">${ld.editions_at_target_count ?? 0} édition(s) Lidarr à ${d.target_track_count} p.</div>`;
+      } else if (ld.max_track_count) {
+        ldEditionExtra = `<div class="dim">Max local : ${ld.max_track_count} p.</div>`;
+      }
+
+      const rows = [
+        ["Artiste (crédit)", mbArtist + mbArtistNote, ldArtist + ldArtistNote],
+        ["Éditeur MB (création)", mbEditorCell, '<span class="dim">—</span>'],
+        ["Édition visée", editionHtml(mb.target_edition) + mbEditionExtra, editionHtml(ld.target_edition) + ldEditionExtra],
+      ];
+      analysisBody.innerHTML = rows
+        .map(
+          ([label, mbCell, ldCell]) =>
+            `<tr><th scope="row">${esc(label)}</th><td>${mbCell}</td><td>${ldCell}</td></tr>`
+        )
+        .join("");
+    }
+
+    function clearAnalysis() {
+      analysisPanel.hidden = true;
+      analysisFiles.textContent = "";
+      analysisBody.innerHTML = "";
+    }
+
     async function fetchJson(path) {
       localStorage.setItem(KEY, apiKeyEl.value.trim());
       const rg = rgEl.value.trim();
@@ -140,6 +372,7 @@
       }
       setMsg("Requête en cours…", "");
       outEl.value = "";
+      clearAnalysis();
       try {
         const res = await fetch(path.replace("{rg}", encodeURIComponent(rg)), { headers: headers() });
         const text = await res.text();
@@ -153,10 +386,49 @@
       }
     }
 
-    document.getElementById("btnSuggest").addEventListener("click", () =>
-      fetchJson("/v1/album/{rg}/suggest"));
+    document.getElementById("btnSuggest").addEventListener("click", () => {
+      postSuggest().catch((e) => setMsg(String(e.message || e), "err"));
+    });
     document.getElementById("btnStatus").addEventListener("click", () =>
       fetchJson("/v1/album/{rg}/status"));
+
+    async function postSuggest() {
+      localStorage.setItem(KEY, apiKeyEl.value.trim());
+      const rg = rgEl.value.trim();
+      if (!/^[0-9a-f-]{36}$/i.test(rg)) {
+        setMsg("MBID release group invalide (36 caractères).", "err");
+        return null;
+      }
+      const body = { release_group_mbid: rg };
+      const p = scanPathEl.value.trim();
+      if (p) body.scan_path = p;
+      else body.use_queue = true;
+      setMsg("Analyse (fichiers + metadata)…", "");
+      outEl.value = "";
+      clearAnalysis();
+      const res = await fetch(`/v1/album/${encodeURIComponent(rg)}/suggest`, {
+        method: "POST",
+        headers: { ...headers(), "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+        outEl.value = JSON.stringify(data, null, 2);
+      } catch {
+        outEl.value = text;
+        return null;
+      }
+      if (!res.ok) {
+        setMsg(data?.error || "HTTP " + res.status, "err");
+        return null;
+      }
+      renderAnalysis(data);
+      const kind = data.recommended_action && data.recommended_action !== "none" ? "ok" : "";
+      setMsg(data.message || "OK", kind);
+      return data;
+    }
 
     async function postReconcile(useQueue) {
       localStorage.setItem(KEY, apiKeyEl.value.trim());
@@ -177,6 +449,7 @@
       }
       setMsg("Lecture des fichiers et comparaison MusicBrainz…", "");
       outEl.value = "";
+      clearAnalysis();
       const res = await fetch(`/v1/album/${encodeURIComponent(rg)}/reconcile`, {
         method: "POST",
         headers: { ...headers(), "Content-Type": "application/json" },
@@ -205,41 +478,6 @@
     });
     document.getElementById("btnReconcilePath").addEventListener("click", () => {
       postReconcile(false).catch((e) => setMsg(String(e.message || e), "err"));
-    });
-
-    document.getElementById("btnCreateRelease").addEventListener("click", async () => {
-      localStorage.setItem(KEY, apiKeyEl.value.trim());
-      const rg = rgEl.value.trim();
-      if (!/^[0-9a-f-]{36}$/i.test(rg)) {
-        setMsg("MBID release group requis.", "err");
-        return;
-      }
-      setMsg("Préparation du formulaire MusicBrainz…", "");
-      outEl.value = "";
-      try {
-        const res = await fetch("/v1/album/seed", {
-          method: "POST",
-          headers: { ...headers(), "Content-Type": "application/json" },
-          body: JSON.stringify({ from_suggest: true, release_group_mbid: rg }),
-        });
-        const text = await res.text();
-        let data;
-        try {
-          data = JSON.parse(text);
-          outEl.value = JSON.stringify(data, null, 2);
-        } catch {
-          outEl.value = text;
-        }
-        if (!res.ok) {
-          setMsg(data?.error || "HTTP " + res.status, "err");
-          return;
-        }
-        const url = data.latest_html_url || data.html_url || "/mb-seed.html";
-        setMsg("Formulaire prêt — ouvre l’onglet MusicBrainz.", "ok");
-        window.open(url, "_blank", "noopener,noreferrer");
-      } catch (e) {
-        setMsg(String(e.message || e), "err");
-      }
     });
 
     document.getElementById("btnCreateFromFiles").addEventListener("click", async () => {

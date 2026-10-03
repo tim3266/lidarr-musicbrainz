@@ -34,15 +34,51 @@ def get_release(release_mbid: str) -> dict[str, Any]:
     return payload["release"]
 
 
+def format_artist_credit(artist_credit: list[dict[str, Any]] | None) -> str:
+    if not artist_credit:
+        return ""
+    parts: list[str] = []
+    for credit in artist_credit:
+        name = credit.get("name") or (credit.get("artist") or {}).get("name") or ""
+        if name:
+            parts.append(str(name))
+    return ", ".join(parts)
+
+
 def get_release_group_releases(release_group_mbid: str) -> list[dict[str, Any]]:
+    releases, _meta = get_release_group_bundle(release_group_mbid)
+    return releases
+
+
+def get_release_group_bundle(
+    release_group_mbid: str,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     configure_client()
     time.sleep(1.05)
     payload = mb.get_release_group_by_id(
         release_group_mbid,
-        includes=["releases"],
+        includes=["releases", "artist-credits"],
     )
     group = payload.get("release-group") or payload
-    return list(group.get("release-list") or group.get("releases") or [])
+    releases = list(group.get("release-list") or group.get("releases") or [])
+    ac = group.get("artist-credit") or []
+    artist_mbid = ""
+    if ac:
+        artist_mbid = (ac[0].get("artist") or {}).get("id") or ""
+    meta = {
+        "title": group.get("title") or "",
+        "artist_name": format_artist_credit(ac),
+        "artist_mbid": artist_mbid,
+    }
+    return releases, meta
+
+
+def get_release_artist_credit(release_mbid: str) -> str:
+    configure_client()
+    time.sleep(1.05)
+    payload = mb.get_release_by_id(release_mbid, includes=["artist-credits"])
+    release = payload.get("release") or payload
+    return format_artist_credit(release.get("artist-credit"))
 
 
 def get_release_track_count(release_mbid: str) -> int | None:

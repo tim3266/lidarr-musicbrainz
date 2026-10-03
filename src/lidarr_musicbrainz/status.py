@@ -12,6 +12,10 @@ from lidarr_musicbrainz.lidarr_client import (
     lidarr_library_releases,
 )
 from lidarr_musicbrainz.mb_api import get_release_group_releases, get_release_track_count
+from lidarr_musicbrainz.servarr_metadata import (
+    compare_mb_servarr_release_ids,
+    fetch_release_group,
+)
 
 
 def lidarr_metadata_lookup(release_group_mbid: str) -> list[dict[str, Any]]:
@@ -48,6 +52,7 @@ def album_status(release_group_mbid: str) -> dict[str, Any]:
     lidarr_configured = bool(os.environ.get("LIDARR_API_KEY"))
     lidarr_in_library = False
     lidarr_album_title: str | None = None
+    lidarr_artist_name: str | None = None
 
     if lidarr_configured:
         try:
@@ -55,6 +60,8 @@ def album_status(release_group_mbid: str) -> dict[str, Any]:
             if library:
                 lidarr_in_library = True
                 lidarr_album_title = library.get("title")
+                artist = library.get("artist") or {}
+                lidarr_artist_name = artist.get("artistName") or artist.get("name")
                 lidarr_releases = lidarr_library_releases(release_group_mbid)
             else:
                 lookup = lidarr_metadata_lookup(release_group_mbid)
@@ -79,11 +86,25 @@ def album_status(release_group_mbid: str) -> dict[str, Any]:
                 "lidarr_error": str(exc),
             }
 
+    servarr: dict[str, Any] = {}
+    servarr_compare: dict[str, Any] = {}
+    servarr_error: str | None = None
+    try:
+        servarr = fetch_release_group(release_group_mbid)
+        servarr_compare = compare_mb_servarr_release_ids(mb_summary, servarr)
+    except requests.RequestException as exc:
+        servarr_error = str(exc)
+        servarr = {"available": False, "error": servarr_error}
+
     return {
         "release_group_mbid": release_group_mbid,
         "musicbrainz": mb_summary,
+        "servarr_metadata": servarr,
+        "servarr_vs_musicbrainz": servarr_compare,
+        "servarr_error": servarr_error,
         "lidarr": lidarr_releases,
         "lidarr_configured": lidarr_configured,
         "lidarr_in_library": lidarr_in_library,
         "lidarr_album_title": lidarr_album_title,
+        "lidarr_artist_name": lidarr_artist_name,
     }

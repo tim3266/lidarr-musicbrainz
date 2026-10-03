@@ -17,7 +17,7 @@ Vérifie que Tampermonkey est actif sur **exactement** l’URL du navigateur. **
 
 Sur **System → Plugins**, un encart rappelle le même bouton (comme la démo « plugin installé »).
 
-Page servie par Docker : `http://<host>:8787/app.html` (analyse MBID, bouton **Créer une release**).
+Page servie par Docker : `http://<host>:8787/app.html` (analyse MBID, seed MB depuis les fichiers en queue/dossier).
 
 ---
 

@@ -190,6 +190,19 @@ class AlbumHandler(BaseHTTPRequestHandler):
                 _json_response(self, 500, {"error": str(exc)})
             return
 
+        match = re.match(r"^/v1/album/([0-9a-f-]{36})/suggest$", path, re.I)
+        if match:
+            try:
+                payload = suggest_album(
+                    match.group(1),
+                    scan_path=body.get("scan_path") or body.get("path"),
+                    use_queue=bool(body.get("use_queue")),
+                )
+                _json_response(self, 200, payload)
+            except Exception as exc:  # noqa: BLE001
+                _json_response(self, 500, {"error": str(exc)})
+            return
+
         if path != "/v1/album/seed":
             _json_response(self, 404, {"error": "Not found"})
             return
@@ -238,7 +251,11 @@ class AlbumHandler(BaseHTTPRequestHandler):
             rg = body.get("release_group_mbid")
             if not rg or not UUID_RE.match(str(rg)):
                 raise ValueError("release_group_mbid required with from_suggest")
-            suggestion = suggest_album(str(rg))
+            suggestion = suggest_album(
+                str(rg),
+                scan_path=body.get("scan_path") or body.get("path"),
+                use_queue=bool(body.get("use_queue")),
+            )
             proposed = suggestion.get("proposed_seed_yaml")
             if not proposed:
                 raise ValueError(suggestion.get("message") or "No seed proposal for this album")

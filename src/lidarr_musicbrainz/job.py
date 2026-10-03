@@ -10,6 +10,7 @@ from typing import Any
 from lidarr_musicbrainz.html_seed import write_seed_html
 from lidarr_musicbrainz.mb_api import get_release
 from lidarr_musicbrainz.seed import ReleaseSeed, build_seed_fields, tracks_from_release
+from lidarr_musicbrainz.mb_release_provenance import record_from_submit_url
 from lidarr_musicbrainz.session_submit import (
     MusicBrainzAuthError,
     credentials_from_env,
@@ -64,6 +65,7 @@ def run_seed_job(
             session = login_session(user, password)
             response = post_seed(session, fields)
             submit_url = response.url
+            record_from_submit_url(submit_url)
         except MusicBrainzAuthError as exc:
             error = str(exc)
 
